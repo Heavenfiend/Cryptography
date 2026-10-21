@@ -1,4 +1,6 @@
 /work/
+/.idea/
+**/.idea/vcs.xml
 **/out/
 **/.kotlin/
 **/demo-results/

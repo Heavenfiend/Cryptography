@@ -22,7 +22,7 @@ abstract class AbstractPrimalityTest(
             val base = random.below(number - BigInteger.valueOf(3)) + BigInteger.TWO
             if (!testIteration(number, base)) return false
         }
-        return confirmResult(number, minProbability)
+        return true
     }
 
     fun iterationCount(minProbability: Double): Int {
@@ -48,21 +48,15 @@ abstract class AbstractPrimalityTest(
 
     protected abstract fun performIteration(number: BigInteger, base: BigInteger): Boolean
 
-    protected open fun confirmResult(number: BigInteger, minProbability: Double): Boolean {
-        return true
-    }
 }
 
+// Для Ферма 0.5 задаёт только правило выбора числа итераций, не общую границу ошибки.
+// Числа Кармайкла проходят все основания, взаимно простые с проверяемым числом.
 class FermatTest : AbstractPrimalityTest(0.5) {
     override fun performIteration(number: BigInteger, base: BigInteger): Boolean {
         return NumberTheory.modPow(base, number - BigInteger.ONE, number) == BigInteger.ONE
     }
 
-    override fun confirmResult(number: BigInteger, minProbability: Double): Boolean {
-        // У Ферма нет общей оценки 2^(-t): числа Кармайкла проходят все взаимно
-        // простые основания. Подтверждение обеспечивает контракт вероятности.
-        return MillerRabinTest().isProbablePrime(number, minProbability)
-    }
 }
 
 class SolovayStrassenTest : AbstractPrimalityTest(0.5) {

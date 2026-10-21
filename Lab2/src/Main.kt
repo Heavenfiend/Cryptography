@@ -47,7 +47,7 @@ private fun demonstrateArithmetic() {
 private fun demonstratePrimality(probability: Double) {
     println("\n2. Тесты простоты")
     val tests = arrayOf(FermatTest(), SolovayStrassenTest(), MillerRabinTest())
-    val names = arrayOf("Ферма + подтверждение МР", "Соловей–Штрассен", "Миллер–Рабин")
+    val names = arrayOf("Ферма", "Соловей–Штрассен", "Миллер–Рабин")
     for (i in tests.indices) {
         print("${names[i]} (итераций: ${tests[i].iterationCount(probability)}): ")
         for (value in intArrayOf(1, 2, 17, 21, 561, 1105, 7919)) {
@@ -60,6 +60,7 @@ private fun demonstratePrimality(probability: Double) {
     val base = BigInteger.TWO
     println("561 составное, но итерация Ферма при основании 2: ${FermatTest().testIteration(carmichael, base)}")
     println("Для этого основания итерация Миллера–Рабина: ${MillerRabinTest().testIteration(carmichael, base)}")
+    println("У чистого Ферма число итераций не гарантирует заданную вероятность для всех составных чисел.")
 }
 
 private fun demonstrateRsa(bits: Int, probability: Double, type: RsaService.TestType, message: String) {

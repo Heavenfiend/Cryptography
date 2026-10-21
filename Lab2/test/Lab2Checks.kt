@@ -131,6 +131,7 @@ object Lab2Checks {
         verify(miller.iterationCount(0.5) == 1, "Одна итерация МР")
         verify(miller.iterationCount(0.99) == 4, "Четыре итерации МР")
         verify(solovay.iterationCount(0.99) == 7, "Семь итераций СШ")
+        verify(fermat.iterationCount(0.99) == 7, "Число итераций Ферма по принятому правилу")
         verify(miller.iterationCount(Math.nextDown(1.0)) == 27, "Вероятность около 1")
         for (n in -5..500) {
             val expected = NumberTheory.isPrimeByTrialDivision(number(n))
@@ -152,6 +153,12 @@ object Lab2Checks {
         }
         verify(fermat.testIteration(number(561), number(2)), "Ферма пропускает 561 при a=2")
         verify(!miller.testIteration(number(561), number(2)), "МР отклоняет 561 при a=2")
+        // Чистый Ферма пропускает число Кармайкла для любого взаимно простого основания.
+        for (base in 2..559) {
+            val coprime = bruteGcd(base, 561) == 1
+            verify(fermat.testIteration(number(561), number(base)) == coprime,
+                "Чистый Ферма: число Кармайкла 561, основание $base")
+        }
         verify(miller.testIteration(number(2047), number(2)), "Сильное псевдопростое 2047")
         verify(!miller.testIteration(number(2047), number(3)), "Свидетель 3 для 2047")
         verify(!solovay.testIteration(number(561), number(5)), "Свидетель СШ для 561")

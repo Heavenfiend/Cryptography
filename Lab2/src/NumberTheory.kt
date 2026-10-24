@@ -5,7 +5,6 @@ import kotlin.math.round
 data class BezoutResult(val gcd: BigInteger, val x: BigInteger, val y: BigInteger)
 data class PrimeFactor(val prime: BigInteger, val exponent: Int)
 
-// Сервис не хранит изменяемого состояния: все промежуточные значения локальны.
 object NumberTheory {
     fun gcd(a: BigInteger, b: BigInteger): BigInteger {
         var x = a.abs()
@@ -167,7 +166,7 @@ object NumberTheory {
     }
 
     fun eulerByFourier(n: Int): BigInteger {
-        // Ограничение удерживает ошибку Double намного ниже половины единицы.
+
         require(n in 1..1_000_000) { "Для вычисления через Double нужно 1 <= n <= 1 000 000" }
         var sum = 0.0
         var compensation = 0.0
@@ -175,7 +174,7 @@ object NumberTheory {
         for (k in 1..n) {
             val divisor = gcd(BigInteger.valueOf(k.toLong()), number).toDouble()
             val term = divisor * cosine(2.0 * PI * k / n)
-            // Суммирование Кэхэна уменьшает потерю точности при сложении.
+
             val corrected = term - compensation
             val next = sum + corrected
             compensation = (next - sum) - corrected
@@ -189,7 +188,7 @@ object NumberTheory {
         if (x > PI) x -= 2.0 * PI
         var sum = 1.0
         var term = 1.0
-        // Ряд Тейлора на [-pi, pi]; 24 слагаемых достаточно для Double.
+
         for (k in 1..24) {
             term *= -x * x / ((2.0 * k - 1.0) * (2.0 * k))
             sum += term

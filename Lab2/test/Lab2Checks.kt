@@ -153,7 +153,7 @@ object Lab2Checks {
         }
         verify(fermat.testIteration(number(561), number(2)), "Ферма пропускает 561 при a=2")
         verify(!miller.testIteration(number(561), number(2)), "МР отклоняет 561 при a=2")
-        // Чистый Ферма пропускает число Кармайкла для любого взаимно простого основания.
+
         for (base in 2..559) {
             val coprime = bruteGcd(base, 561) == 1
             verify(fermat.testIteration(number(561), number(base)) == coprime,
@@ -235,7 +235,7 @@ object Lab2Checks {
     }
 
     private fun invalidArguments() {
-        // В тестах лямбда нужна только для передачи действия, которое должно упасть.
+
         expectInvalid { NumberTheory.modPow(number(2), number(-1), number(3)) }
         expectInvalid { NumberTheory.modPow(number(2), number(3), number(0)) }
         expectInvalid { NumberTheory.inverse(number(2), number(4)) }

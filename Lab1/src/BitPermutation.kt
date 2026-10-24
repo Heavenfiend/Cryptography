@@ -1,4 +1,4 @@
-enum class BitOrder { // выбор режима нумеровки битов
+enum class BitOrder {
     MOST_SIGNIFICANT_FIRST,
     LEAST_SIGNIFICANT_FIRST
 }
@@ -8,14 +8,14 @@ class BitPermutation {
         value: ByteArray,
         pBlock: IntArray,
         bitOrder: BitOrder,
-        startIndex: Int // 0 или 1
+        startIndex: Int
     ): ByteArray {
         require(startIndex == 0 || startIndex == 1) {
             "Начальный номер брита должен быть 0 или 1"
         }
 
         val inputBitCount = value.size.toLong() * 8
-        val resultByteCount = pBlock.size / 8 + if (pBlock.size % 8 == 0) 0 else 1 // кол-во байтов в резе
+        val resultByteCount = pBlock.size / 8 + if (pBlock.size % 8 == 0) 0 else 1
         val result = ByteArray(resultByteCount)
 
         for (outputIndex in pBlock.indices) {
@@ -31,8 +31,8 @@ class BitPermutation {
 
             when (bitOrder) {
                 BitOrder.MOST_SIGNIFICANT_FIRST -> {
-                    inputByteIndex = (inputIndex / 8).toInt() // номер байта
-                    inputBitOffset = 7 - (inputIndex % 8).toInt() // справа налево птмчт
+                    inputByteIndex = (inputIndex / 8).toInt()
+                    inputBitOffset = 7 - (inputIndex % 8).toInt()
                     outputByteIndex = outputIndex / 8
                     outputBitOffset = 7 - outputIndex % 8
                 }
@@ -44,10 +44,10 @@ class BitPermutation {
                 }
             }
 
-            val unsignedByte = value[inputByteIndex].toInt() and 0xFF // т.к. знаковый котлин -128 .. 127
-            val bit = (unsignedByte ushr inputBitOffset) and 1 // сдвигаем вправо на inputBitOffset
+            val unsignedByte = value[inputByteIndex].toInt() and 0xFF
+            val bit = (unsignedByte ushr inputBitOffset) and 1
             result[outputByteIndex] =
-                (result[outputByteIndex].toInt() or (bit shl outputBitOffset)).toByte() // побитовое или
+                (result[outputByteIndex].toInt() or (bit shl outputBitOffset)).toByte()
         }
 
         return result

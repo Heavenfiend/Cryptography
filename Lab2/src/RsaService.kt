@@ -4,7 +4,6 @@ import java.math.BigInteger
 class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
     enum class TestType { FERMAT, SOLOVAY_STRASSEN, MILLER_RABIN }
 
-    // В Kotlin класс без inner является nested: не хранит ссылку на RsaService.
     class KeyGenerator(
         testType: TestType,
         private val minProbability: Double,
@@ -35,7 +34,7 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
         }
 
         fun generate(): RsaKeyPair {
-            // 65537 — стандартная открытая экспонента, а не заранее готовый ключ.
+
             val e = BigInteger.valueOf(65537)
             while (true) {
                 val p = generatePrime()
@@ -48,7 +47,7 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
                 val d = NumberTheory.inverse(e, phi)
                 if (d <= NumberTheory.sqrtFloor(n)) continue
                 val publicKey = RsaPublicKey(n, e)
-                // Дополнительно проверяем сам реализованный вариант атаки Винера.
+
                 if (WienerAttack.attack(publicKey).privateExponent != null) continue
                 return RsaKeyPair(publicKey, RsaPrivateKey(n, d), p, q)
             }
@@ -61,7 +60,7 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
             val n = p * q
             var start = NumberTheory.sqrtFloor(n)
             if (start * start < n) start++
-            // A идёт от ceil(sqrt(n)) до (p+q)/2. Это точное число приращений.
+
             return (p + q) / BigInteger.TWO - start
         }
     }
@@ -97,7 +96,7 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
         while (offset < data.size) {
             var length = data.size - offset
             if (length > payloadSize) length = payloadSize
-            // Маркер 1 сохраняет ведущие нули и длину последнего блока.
+
             val block = ByteArray(length + 1)
             block[0] = 1
             for (i in 0 until length) block[i + 1] = data[offset + i]

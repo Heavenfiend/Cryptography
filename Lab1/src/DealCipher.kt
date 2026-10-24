@@ -1,4 +1,3 @@
-// шифрует и расшифровывает 16 байтовые блоки алгоритмом DEAL
 class DealCipher : SymmetricCipher {
     override val blockSize: Int = 16
     private val network = FeistelNetwork(DealKeyExpansion(), DesRoundAdapter(), blockSize)

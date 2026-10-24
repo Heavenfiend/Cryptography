@@ -1,4 +1,3 @@
-// позволяет использовать шифрование DES как раундовую функцию F для DEAL
 class DesRoundAdapter(private val des: SymmetricCipher = DesCipher()) : RoundTransformation {
     init {
         require(des.blockSize == 8) { "Для DEAL нужен DES с блоком 8 байтов" }

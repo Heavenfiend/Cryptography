@@ -12,7 +12,6 @@ abstract class AbstractPrimalityTest(
         require(errorPerRound > 0.0 && errorPerRound < 1.0) { "Ошибка одного раунда должна быть между 0 и 1" }
     }
 
-    // Шаблонный метод: общий порядок проверки нельзя переопределить.
     final override fun isProbablePrime(number: BigInteger, minProbability: Double): Boolean {
         val rounds = iterationCount(minProbability)
         if (number < BigInteger.TWO) return false
@@ -38,7 +37,6 @@ abstract class AbstractPrimalityTest(
         return count
     }
 
-    // Открыто для демонстрации свидетелей и проверки отдельных итераций.
     fun testIteration(number: BigInteger, base: BigInteger): Boolean {
         require(number >= BigInteger.valueOf(5) && number.testBit(0)) { "Нужно нечётное n >= 5" }
         require(base >= BigInteger.TWO && base <= number - BigInteger.TWO) { "Нужно 2 <= a <= n - 2" }
@@ -50,8 +48,6 @@ abstract class AbstractPrimalityTest(
 
 }
 
-// Для Ферма 0.5 задаёт только правило выбора числа итераций, не общую границу ошибки.
-// Числа Кармайкла проходят все основания, взаимно простые с проверяемым числом.
 class FermatTest : AbstractPrimalityTest(0.5) {
     override fun performIteration(number: BigInteger, base: BigInteger): Boolean {
         return NumberTheory.modPow(base, number - BigInteger.ONE, number) == BigInteger.ONE

@@ -6,7 +6,7 @@ import java.util.stream.IntStream
 
 class SymmetricCipherContext(
     key: ByteArray,
-    private val cipher: SymmetricCipher, // объект шифра
+    private val cipher: SymmetricCipher,
     private val mode: CipherMode,
     paddingMode: PaddingMode,
     initializationVector: ByteArray? = null,
@@ -35,7 +35,7 @@ class SymmetricCipherContext(
         }
         cipher.setKey(key.copyOf())
     }
-    // шифрует массив: добавляет набивку и обрабатывает выбранным режимом
+
     fun encrypt(data: ByteArray): CompletableFuture<ByteArray> {
         val snapshot = data.copyOf()
         return CompletableFuture.supplyAsync { process(padding.add(snapshot), true) }
@@ -46,27 +46,24 @@ class SymmetricCipherContext(
         return CompletableFuture.supplyAsync { padding.remove(process(snapshot, false)) }
     }
 
-    // В Kotlin нет out/ref-параметра для переназначения массива у вызывающего кода.
-    // AtomicReference служит контейнером для ссылки на результирующий массив.
     fun encrypt(data: ByteArray, result: AtomicReference<ByteArray>): CompletableFuture<Void> =
         encrypt(data).thenAccept { result.set(it) }
 
     fun decrypt(data: ByteArray, result: AtomicReference<ByteArray>): CompletableFuture<Void> =
         decrypt(data).thenAccept { result.set(it) }
 
-    // Чтение и запись файла также выполняются в фоне. Файл загружается в память целиком.
     fun encrypt(inputPath: Path, outputPath: Path): CompletableFuture<Void> =
         CompletableFuture.runAsync {
             val data = Files.readAllBytes(inputPath)
             Files.write(outputPath, process(padding.add(data), true))
         }
-    // расшифровывает массив и удаляет набивку
+
     fun decrypt(inputPath: Path, outputPath: Path): CompletableFuture<Void> =
         CompletableFuture.runAsync {
             val data = Files.readAllBytes(inputPath)
             Files.write(outputPath, padding.remove(process(data, false)))
         }
-    // принимают пути строками, преобразуют их в Path
+
     fun encrypt(inputPath: String, outputPath: String): CompletableFuture<Void> =
         encrypt(Path.of(inputPath), Path.of(outputPath))
 
@@ -80,11 +77,11 @@ class SymmetricCipherContext(
         require(data.size % blockSize == 0) { "Длина данных должна быть кратна размеру блока" }
         val result = ByteArray(data.size)
         val count = data.size / blockSize
-        fun block(index: Int) = data.copyOfRange(index * blockSize, (index + 1) * blockSize) // помощник для получения блока
-        fun write(index: Int, value: ByteArray) { // помощник для записи готового блока
+        fun block(index: Int) = data.copyOfRange(index * blockSize, (index + 1) * blockSize)
+        fun write(index: Int, value: ByteArray) {
             require(value.size == blockSize) { "Алгоритм вернул блок неверного размера" }
             value.copyInto(result, index * blockSize)
-        } // помощник для параллельной обработки
+        }
         fun parallel(action: (Int) -> Unit) {
             IntStream.range(0, count).parallel().forEach { action(it) }
         }
@@ -152,7 +149,7 @@ class SymmetricCipherContext(
         return ByteArray(left.size) { (left[it].toInt() xor right[it].toInt()).toByte() }
     }
 
-    private fun counterAt(index: Int): ByteArray { // IV + номер блока
+    private fun counterAt(index: Int): ByteArray {
         val counter = iv!!.copyOf()
         var carry = index.toLong()
         for (i in counter.lastIndex downTo 0) {

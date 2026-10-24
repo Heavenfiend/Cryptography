@@ -1,6 +1,5 @@
 import kotlin.random.Random
 
-// реализация набивки и ее удаление
 class BlockPadding(
     private val mode: PaddingMode,
     private val blockSize: Int
@@ -11,13 +10,13 @@ class BlockPadding(
 
     fun add(data: ByteArray): ByteArray {
         val remainder = data.size % blockSize
-        val count = if (mode == PaddingMode.ZEROS && remainder == 0) 0 else blockSize - remainder // остальные доб 1 блок для просмотра потом кол во добавленных байтов
+        val count = if (mode == PaddingMode.ZEROS && remainder == 0) 0 else blockSize - remainder
         require(data.size <= Int.MAX_VALUE - count) { "Слишком большой массив" }
         val result = data.copyOf(data.size + count)
         if (count == 0) return result
 
         when (mode) {
-            PaddingMode.ZEROS -> Unit // ниче
+            PaddingMode.ZEROS -> Unit
             PaddingMode.ANSI_X923 -> result[result.lastIndex] = count.toByte()
             PaddingMode.PKCS7 -> result.fill(count.toByte(), data.size)
             PaddingMode.ISO_10126 -> {
@@ -28,7 +27,7 @@ class BlockPadding(
         return result
     }
 
-    fun remove(data: ByteArray): ByteArray { // удаление набивки
+    fun remove(data: ByteArray): ByteArray {
         require(data.size % blockSize == 0) { "Длина данных не кратна размеру блока" }
         if (mode == PaddingMode.ZEROS) {
             var end = data.size
@@ -36,7 +35,7 @@ class BlockPadding(
             return data.copyOf(end)
         }
         require(data.isNotEmpty()) { "Отсутствует блок с набивкой" }
-        val count = data.last().toInt() and 0xFF // т.к. байты в котлин −128 до 127 а не 0 .. 255
+        val count = data.last().toInt() and 0xFF
         require(count in 1..blockSize && count <= data.size) { "Некорректная длина набивки" }
         val end = data.size - count
         when (mode) {

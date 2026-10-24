@@ -1,10 +1,9 @@
-
 class FeistelNetwork(
-    private val keyExpansion: KeyExpansion, // генератор ключей: Array<ByteArray>
-    private val roundTransformation: RoundTransformation, // функция F: ByteArray
+    private val keyExpansion: KeyExpansion,
+    private val roundTransformation: RoundTransformation,
     override val blockSize: Int = 8
 ) : SymmetricCipher {
-    @Volatile // другие потоки видят, когда значение обновляется
+    @Volatile
     private var roundKeys: Array<ByteArray>? = null
 
     init {

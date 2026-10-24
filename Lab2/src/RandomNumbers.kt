@@ -6,7 +6,7 @@ class RandomNumbers(private val random: SecureRandom = SecureRandom()) {
         require(limit > BigInteger.ZERO) { "Верхняя граница должна быть положительной" }
         var result: BigInteger
         do {
-            // Генератор случайных битов, а не готовый генератор простых чисел.
+
             result = BigInteger(limit.bitLength(), random)
         } while (result >= limit)
         return result

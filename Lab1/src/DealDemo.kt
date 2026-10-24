@@ -1,10 +1,8 @@
-// Демонстрирует DEAL для массивов, текста, музыки и изображений во всех семи режимах.
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
-
 
 object DealDemo {
     private val algorithm = "DEAL"

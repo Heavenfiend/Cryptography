@@ -1,4 +1,3 @@
-// требования к классу, который реализует шифр (одного блока)
 interface SymmetricCipher {
     val blockSize: Int
 

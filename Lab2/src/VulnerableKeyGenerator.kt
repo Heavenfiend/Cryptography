@@ -16,8 +16,7 @@ class VulnerableKeyGenerator(bitLength: Int, minProbability: Double) {
             val fourthRoot = NumberTheory.sqrtFloor(NumberTheory.sqrtFloor(n))
             val upper = fourthRoot / BigInteger.valueOf(3)
             if (upper <= BigInteger.valueOf(3)) continue
-            // Одинаковая битовая длина даёт max(p,q) < 2*min(p,q).
-            // Выбираем 3 <= d < floor(n^(1/4))/3, чтобы работала теорема Винера.
+
             var d: BigInteger
             do {
                 d = random.below(upper - BigInteger.valueOf(3)) + BigInteger.valueOf(3)

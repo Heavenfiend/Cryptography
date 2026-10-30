@@ -1,7 +1,9 @@
 import java.math.BigInteger
 
+// запускает демонстрацию первого пункта; настройки и вызовы остальных пунктов пока закомментированы
 fun main(args: Array<String>) {
     try {
+        /*
         var bitLength = 128
         var probability = 0.999999999999
         var type = RsaService.TestType.MILLER_RABIN
@@ -12,16 +14,18 @@ fun main(args: Array<String>) {
         if (args.size > 2) type = RsaService.TestType.valueOf(args[2].uppercase())
         if (args.size > 3) message = args[3]
         require(bitLength >= 16 && probability >= 0.5 && probability < 1.0) { "Нужны биты >= 16 и вероятность в [0.5, 1)" }
+        */
         demonstrateArithmetic()
-        demonstratePrimality(probability)
-        demonstrateRsa(bitLength, probability, type, message)
-        demonstrateWiener(bitLength, probability)
+        // demonstratePrimality(probability)
+        // demonstrateRsa(bitLength, probability, type, message)
+        // demonstrateWiener(bitLength, probability)
     } catch (error: IllegalArgumentException) {
         System.err.println("Ошибка: ${error.message}")
         kotlin.system.exitProcess(1)
     }
 }
 
+// показывает функции первого пункта на небольших числах: нод, коэффициенты безу, символы лежандра и якоби, степень по модулю
 private fun demonstrateArithmetic() {
     println("1. Арифметический сервис")
     val a = BigInteger.valueOf(240)
@@ -34,16 +38,20 @@ private fun demonstrateArithmetic() {
     println("Символ Якоби (5/21): ${NumberTheory.jacobi(BigInteger.valueOf(5), BigInteger.valueOf(21))}")
     println("7^128 mod 13: ${NumberTheory.modPow(BigInteger.valueOf(7), BigInteger.valueOf(128), BigInteger.valueOf(13))}")
     println("n | Эйлер: определение / разложение / Фурье | Кармайкл")
+    // для каждого n сравниваем три способа вычисления функции эйлера и отдельно выводим функцию кармайкла
     for (n in intArrayOf(1, 8, 9, 12, 36, 97)) {
         val number = BigInteger.valueOf(n.toLong())
         val first = NumberTheory.eulerByDefinition(number)
         val second = NumberTheory.eulerByFactorization(number)
         val third = NumberTheory.eulerByFourier(n)
+        // если ответы не совпали, проверка остановит программу вместо вывода неверного результата
         check(first == second && second == third)
         println("$n | $first / $second / $third | ${NumberTheory.carmichael(number)}")
     }
 }
 
+/*
+// сравнивает три теста простоты на одинаковых числах с заданной вероятностью
 private fun demonstratePrimality(probability: Double) {
     println("\n2. Тесты простоты")
     val tests = arrayOf(FermatTest(), SolovayStrassenTest(), MillerRabinTest())
@@ -56,6 +64,7 @@ private fun demonstratePrimality(probability: Double) {
         }
         println()
     }
+    // число 561 составное, но проходит проверку ферма с основанием 2; это показывает ограничение чистого теста ферма
     val carmichael = BigInteger.valueOf(561)
     val base = BigInteger.TWO
     println("561 составное, но итерация Ферма при основании 2: ${FermatTest().testIteration(carmichael, base)}")
@@ -63,9 +72,11 @@ private fun demonstratePrimality(probability: Double) {
     println("У чистого Ферма число итераций не гарантирует заданную вероятность для всех составных чисел.")
 }
 
+// создаёт ключи rsa, шифрует данные и проверяет, что после расшифрования получились исходные байты
 private fun demonstrateRsa(bits: Int, probability: Double, type: RsaService.TestType, message: String) {
     println("\n3. RSA: выбран $type, кандидаты по $bits бит")
     val rsa = RsaService(type, probability, bits)
+    // второй проход создаёт новую пару ключей, чтобы показать, что ключи можно менять у того же объекта
     for (generation in 1..2) {
         if (generation > 1) rsa.generateNewKeyPair()
         val pair = rsa.keyPair
@@ -81,18 +92,21 @@ private fun demonstrateRsa(bits: Int, probability: Double, type: RsaService.Test
         check(rsa.decrypt(rsa.encrypt(ByteArray(0))).isEmpty())
         println("Текст, пустой массив и двоичные данные: восстановлены побайтно")
         println("Приращений в методе Ферма до множителей: ${rsa.keyGenerator.fermatSteps(pair.p, pair.q)}")
+        // на этих ключах атака винера не должна найти закрытый показатель d
         val attack = WienerAttack.attack(pair.publicKey)
         check(attack.privateExponent == null)
         println("Атака Винера на эту пару: d не найдено")
     }
 }
 
+// показывает атаку винера: по открытому ключу восстанавливаем маленький закрытый показатель d у специально уязвимой пары
 private fun demonstrateWiener(bits: Int, probability: Double) {
     println("\n4. Атака Винера на сгенерированные уязвимые ключи")
     val generator = VulnerableKeyGenerator(bits, probability)
     for (i in 1..3) {
         val pair = generator.generate()
         val result = WienerAttack.attack(pair.publicKey)
+        // сравниваем найденные d и функцию эйлера с настоящими значениями, известными при создании ключей
         check(result.privateExponent == pair.privateKey.d)
         check(result.phi == pair.phi)
         println("Пример $i: n=${pair.publicKey.n}, e=${pair.publicKey.e}")
@@ -102,19 +116,23 @@ private fun demonstrateWiener(bits: Int, probability: Double) {
         for (fraction in result.convergents) println("  ${fraction.numerator}/${fraction.denominator}")
         val message = BigInteger.valueOf(42)
         val ciphertext = NumberTheory.modPow(message, pair.publicKey.e, pair.publicKey.n)
+        // найденным показателем расшифровываем число 42, чтобы проверить результат атаки на сообщении
         val recovered = NumberTheory.modPow(ciphertext, result.privateExponent, pair.publicKey.n)
         check(recovered == message)
         println("Сообщение $message после расшифрования найденным d: $recovered")
     }
 }
 
+// записывает каждый байт двумя шестнадцатеричными цифрами, чтобы зашифрованные данные было удобно вывести
 private fun hex(data: ByteArray): String {
     val digits = "0123456789ABCDEF"
     val result = StringBuilder()
     for (byte in data) {
+        // маска оставляет 8 бит без знака; старшие 4 бита выбирают первую цифру, младшие 4 — вторую
         val value = byte.toInt() and 255
         result.append(digits[value ushr 4])
         result.append(digits[value and 15])
     }
     return result.toString()
 }
+*/

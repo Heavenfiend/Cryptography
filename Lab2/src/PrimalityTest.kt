@@ -11,7 +11,7 @@ abstract class AbstractPrimalityTest(
     init {
         require(errorPerRound > 0.0 && errorPerRound < 1.0) { "Ошибка одного раунда должна быть между 0 и 1" }
     }
-
+    // запускает вероятностный тест нужное количество раз и возвращает результат
     final override fun isProbablePrime(number: BigInteger, minProbability: Double): Boolean {
         val rounds = iterationCount(minProbability)
         if (number < BigInteger.TWO) return false
@@ -23,7 +23,7 @@ abstract class AbstractPrimalityTest(
         }
         return true
     }
-
+    // сколько раз нужно выполнить вероятностный тест, чтобы достичь заданного уровня уверенности
     fun iterationCount(minProbability: Double): Int {
         require(minProbability >= 0.5 && minProbability < 1.0) {
             "Вероятность должна быть в диапазоне [0.5, 1)"
@@ -36,7 +36,7 @@ abstract class AbstractPrimalityTest(
         }
         return count
     }
-
+    // выполняет один раунд проверки
     fun testIteration(number: BigInteger, base: BigInteger): Boolean {
         require(number >= BigInteger.valueOf(5) && number.testBit(0)) { "Нужно нечётное n >= 5" }
         require(base >= BigInteger.TWO && base <= number - BigInteger.TWO) { "Нужно 2 <= a <= n - 2" }

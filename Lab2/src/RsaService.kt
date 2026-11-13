@@ -4,6 +4,7 @@ import java.math.BigInteger
 class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
     enum class TestType { FERMAT, SOLOVAY_STRASSEN, MILLER_RABIN }
 
+
     class KeyGenerator(
         testType: TestType,
         private val minProbability: Double,
@@ -12,6 +13,7 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
         private val random = RandomNumbers()
         private val test: PrimalityTest
 
+        // проверяем параметры и выбираем тест простоты
         init {
             require(minProbability >= 0.5 && minProbability < 1.0) { "Вероятность должна быть в [0.5, 1)" }
             require(bitLength >= 16) { "Битовая длина кандидата должна быть не меньше 16" }
@@ -22,6 +24,7 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
             }
         }
 
+        // генерируем нечётные числа, пока одно не пройдёт тест простоты
         fun generatePrime(): BigInteger {
             while (true) {
                 val candidate = random.oddWithBitLength(bitLength)
@@ -29,12 +32,13 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
             }
         }
 
+        // задаём минимально допустимое количество шагов факторизации Ферма
         fun minimumFermatSteps(): BigInteger {
             return BigInteger.ONE.shiftLeft(bitLength - 8)
         }
 
+        // генерируем пару ключей RSA, отбрасывая неподходящие параметры
         fun generate(): RsaKeyPair {
-
             val e = BigInteger.valueOf(65537)
             while (true) {
                 val p = generatePrime()
@@ -53,6 +57,7 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
             }
         }
 
+        // вычисляем число шагов до нахождения p и q методом Ферма
         fun fermatSteps(p: BigInteger, q: BigInteger): BigInteger {
             require(p > BigInteger.TWO && q > BigInteger.TWO && p.testBit(0) && q.testBit(0)) {
                 "Нужны нечётные p и q больше 2"
@@ -65,34 +70,50 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
         }
     }
 
+
+
+    // создаём генератор ключей RSA
     val keyGenerator = KeyGenerator(testType, minProbability, bitLength)
+
+    // создаём и храним текущую пару ключей
     var keyPair: RsaKeyPair = keyGenerator.generate()
         private set
 
+    // генерируем новую пару ключей и заменяем текущую
     fun generateNewKeyPair(): RsaKeyPair {
         keyPair = keyGenerator.generate()
         return keyPair
     }
 
+    // шифруем число открытым ключом: c = m^e mod n
     fun encrypt(message: BigInteger, key: RsaPublicKey = keyPair.publicKey): BigInteger {
         require(key.n > BigInteger.ONE && key.e > BigInteger.ONE) { "Некорректный открытый ключ" }
         require(message >= BigInteger.ZERO && message < key.n) { "Сообщение должно быть в [0, n)" }
         return NumberTheory.modPow(message, key.e, key.n)
     }
 
+    // расшифровываем число закрытым ключом: m = c^d mod n
     fun decrypt(ciphertext: BigInteger, key: RsaPrivateKey = keyPair.privateKey): BigInteger {
         require(key.n > BigInteger.ONE && key.d > BigInteger.ZERO) { "Некорректный закрытый ключ" }
         require(ciphertext >= BigInteger.ZERO && ciphertext < key.n) { "Шифротекст должен быть в [0, n)" }
         return NumberTheory.modPow(ciphertext, key.d, key.n)
     }
 
+
+
+    // шифруем массив байтов, разбивая его на блоки
     fun encrypt(data: ByteArray, key: RsaPublicKey = keyPair.publicKey): ByteArray {
         require(key.n > BigInteger.ONE && key.e > BigInteger.ONE) { "Некорректный открытый ключ" }
+
+        // определяем размер данных в одном блоке и размер зашифрованного блока
         val payloadSize = (key.n.bitLength() - 1) / 8 - 1
         require(payloadSize > 0) { "Модуль слишком мал для шифрования байтов" }
         val blockSize = (key.n.bitLength() + 7) / 8
+
         val output = ByteArrayOutputStream()
         var offset = 0
+
+        // последовательно шифруем каждый блок данных
         while (offset < data.size) {
             var length = data.size - offset
             if (length > payloadSize) length = payloadSize
@@ -100,6 +121,8 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
             val block = ByteArray(length + 1)
             block[0] = 1
             for (i in 0 until length) block[i + 1] = data[offset + i]
+
+            // превращаем блок в число, шифруем RSA и записываем результат
             val encrypted = encrypt(BigInteger(1, block), key)
             output.write(toFixedBytes(encrypted, blockSize))
             offset += length
@@ -107,37 +130,60 @@ class RsaService(testType: TestType, minProbability: Double, bitLength: Int) {
         return output.toByteArray()
     }
 
+
+
+    // расшифровываем массив байтов, обрабатывая каждый блок отдельно
     fun decrypt(data: ByteArray, key: RsaPrivateKey = keyPair.privateKey): ByteArray {
         require(key.n > BigInteger.ONE && key.d > BigInteger.ZERO) { "Некорректный закрытый ключ" }
+
+        // вычисляем размеры исходного и зашифрованного блоков
         val payloadSize = (key.n.bitLength() - 1) / 8 - 1
         require(payloadSize > 0) { "Модуль слишком мал для шифрования байтов" }
         val blockSize = (key.n.bitLength() + 7) / 8
         require(data.size % blockSize == 0) { "Шифротекст содержит неполный блок" }
+
         val output = ByteArrayOutputStream()
         var offset = 0
+
+        // последовательно расшифровываем каждый блок
         while (offset < data.size) {
             val encrypted = BigInteger(1, data.copyOfRange(offset, offset + blockSize))
             val block = decrypt(encrypted, key).toByteArray()
+
+            // проверяем формат расшифрованного блока
             require(block.size in 2..payloadSize + 1 && block[0] == 1.toByte()) {
                 "Неверный формат блока или неверный ключ"
             }
             if (offset + blockSize < data.size) {
                 require(block.size == payloadSize + 1) { "Укороченный блок допустим только в конце" }
             }
+
+            // убираем служебный байт и собираем исходные данные
             output.write(block, 1, block.size - 1)
             offset += blockSize
         }
+
         return output.toByteArray()
     }
 
+
+
+    // преобразуем число в массив байтов фиксированной длины
     private fun toFixedBytes(value: BigInteger, length: Int): ByteArray {
         val bytes = value.toByteArray()
         var start = 0
+
+        // убираем лишний нулевой байт знака, если он присутствует
         if (bytes.size > 1 && bytes[0] == 0.toByte()) start = 1
+
         val count = bytes.size - start
         require(count <= length) { "Число не помещается в блок" }
+
+        // создаём массив нужной длины, дополняя его нулями слева
         val result = ByteArray(length)
         for (i in 0 until count) result[length - count + i] = bytes[start + i]
+
         return result
     }
+
 }

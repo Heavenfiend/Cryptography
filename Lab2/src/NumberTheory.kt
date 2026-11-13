@@ -2,8 +2,17 @@ import java.math.BigInteger
 import kotlin.math.PI
 import kotlin.math.round
 
-data class BezoutResult(val gcd: BigInteger, val x: BigInteger, val y: BigInteger)
-data class PrimeFactor(val prime: BigInteger, val exponent: Int)
+// нод и безу хранит
+data class BezoutResult(
+    val gcd: BigInteger,
+    val x: BigInteger,
+    val y: BigInteger
+)
+// простой множитель
+data class PrimeFactor(
+    val prime: BigInteger,
+    val exponent: Int
+)
 
 object NumberTheory {
     // находит наибольший общий делитель: алгоритм евклида заменяет пару (x, y) на (y, остаток от x / y), пока остаток не станет нулём
@@ -80,7 +89,7 @@ object NumberTheory {
         return result
     }
 
-    // считает base^exponent по модулю: раскладываем показатель на степени двойки, например 13 = 8 + 4 + 1
+    // реализует быстрое возведение в степень по модулю: раскладываем показатель на степени двойки, например 13 = 8 + 4 + 1
     fun modPow(base: BigInteger, exponent: BigInteger, modulus: BigInteger): BigInteger {
         require(exponent.signum() >= 0) { "Показатель степени не может быть отрицательным" }
         require(modulus > BigInteger.ZERO) { "Модуль должен быть положительным" }
@@ -97,7 +106,7 @@ object NumberTheory {
         return result
     }
 
-    // находит обратное число x: value * x даёт остаток 1 по модулю modulus
+    // находит обратный элемент по модулю
     fun inverse(value: BigInteger, modulus: BigInteger): BigInteger {
         require(modulus > BigInteger.ONE) { "Модуль должен быть больше 1" }
         val result = extendedGcd(value, modulus)

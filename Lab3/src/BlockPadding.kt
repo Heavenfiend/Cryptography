@@ -4,19 +4,18 @@ class BlockPadding(
     private val mode: PaddingMode,
     private val blockSize: Int
 ) {
+    private val zerosMarker = 0x80.toByte()
+
     init {
         require(blockSize in 1..255) { "Размер блока должен быть от 1 до 255 байтов" }
     }
 
     fun add(data: ByteArray): ByteArray {
-        val remainder = data.size % blockSize
-        val count = if (mode == PaddingMode.ZEROS && remainder == 0) 0 else blockSize - remainder
+        val count = blockSize - data.size % blockSize
         require(data.size <= Int.MAX_VALUE - count) { "Слишком большой массив" }
         val result = data.copyOf(data.size + count)
-        if (count == 0) return result
-
         when (mode) {
-            PaddingMode.ZEROS -> Unit
+            PaddingMode.ZEROS -> result[data.size] = zerosMarker
             PaddingMode.ANSI_X923 -> result[result.lastIndex] = count.toByte()
             PaddingMode.PKCS7 -> result.fill(count.toByte(), data.size)
             PaddingMode.ISO_10126 -> {
@@ -29,12 +28,14 @@ class BlockPadding(
 
     fun remove(data: ByteArray): ByteArray {
         require(data.size % blockSize == 0) { "Длина данных не кратна размеру блока" }
-        if (mode == PaddingMode.ZEROS) {
-            var end = data.size
-            while (end > 0 && data[end - 1] == 0.toByte()) end--
-            return data.copyOf(end)
-        }
         require(data.isNotEmpty()) { "Отсутствует блок с набивкой" }
+        if (mode == PaddingMode.ZEROS) {
+            val lastBlockStart = data.size - blockSize
+            var marker = data.lastIndex
+            while (marker >= lastBlockStart && data[marker] == 0.toByte()) marker--
+            require(marker >= lastBlockStart && data[marker] == zerosMarker) { "Некорректная набивка Zeros" }
+            return data.copyOf(marker)
+        }
         val count = data.last().toInt() and 0xFF
         require(count in 1..blockSize && count <= data.size) { "Некорректная длина набивки" }
         val end = data.size - count

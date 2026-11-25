@@ -26,7 +26,7 @@ object RijndaelDemo {
 
         println("\n3. Rijndael: массивы и файлы")
         println("Сочетаний блока и ключа: ${sizes.size * sizes.size}, режимов: ${CipherMode.entries.size}, набивок: ${PaddingMode.entries.size}, модулей: ${moduli.size}")
-        println("Zeros: исходная длина сохраняется в отчёте, чтобы восстановить конечные нули данных")
+        println("Zeros: маркер 0x80 и нули до конца блока")
         println("Random Delta: учебный вариант из первой лабы, C[i] = E(P[i] XOR (IV + i * delta))")
         println("Результаты: $run")
 
@@ -66,8 +66,7 @@ object RijndaelDemo {
                                     random.nextBytes(original)
                                     if (length > 0) original[length - 1] = 0
                                     val encrypted = context.encrypt(original).join()
-                                    var restored = context.decrypt(encrypted).join()
-                                    if (padding == PaddingMode.ZEROS) restored = restoreZeros(restored, length)
+                                    val restored = context.decrypt(encrypted).join()
                                     check(original.contentEquals(restored)) { "Не восстановлен массив: $parameters, $length" }
                                     report.write("array;random-$length;$parameters;$length;${encrypted.size};${restored.size};true;$keyAndVectors\n")
                                     checks++
@@ -83,10 +82,6 @@ object RijndaelDemo {
                                     require(length <= Int.MAX_VALUE) { "Для демонстрации файл должен помещаться в массив байтов" }
                                     context.encrypt(source, encrypted).join()
                                     context.decrypt(encrypted, restored).join()
-                                    if (padding == PaddingMode.ZEROS) {
-                                        val decoded = Files.readAllBytes(restored)
-                                        Files.write(restored, restoreZeros(decoded, length.toInt()))
-                                    }
                                     check(Files.mismatch(source, restored) == -1L) { "Не восстановлен файл: $name, $parameters" }
                                     report.write("file;${csv(name)};$parameters;$length;${Files.size(encrypted)};${Files.size(restored)};true;$keyAndVectors\n")
                                     checks++
@@ -100,12 +95,6 @@ object RijndaelDemo {
         }
         println("Проверок восстановления: $checks. Все данные совпали побайтно")
         println("Отчёт с параметрами каждой проверки: ${run.resolve("report.csv")}")
-    }
-
-    // нулевая набивка сама не хранит длину: по сохранённой длине возвращаем исходные конечные нули
-    private fun restoreZeros(data: ByteArray, originalLength: Int): ByteArray {
-        check(data.size <= originalLength) { "После удаления нулевой набивки осталось слишком много данных" }
-        return data.copyOf(originalLength)
     }
 
     private fun hex(data: ByteArray?): String {

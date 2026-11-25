@@ -43,8 +43,12 @@ object Lab3Checks {
         for (vector in vectors) {
             val context = SymmetricCipherContext(key, RijndaelCipher(), CipherMode.valueOf(vector[0]), PaddingMode.ZEROS, hex(vector[1]))
             val expected = hex(vector[2])
-            verify(context.encrypt(data).join().contentEquals(expected), "режим ${vector[0]} не совпал с nist")
-            verify(context.decrypt(expected).join().contentEquals(data), "расшифрование ${vector[0]} не совпало с nist")
+            val encrypted = context.encrypt(data).join()
+            // в контрольных примерах nist есть только блоки данных, поэтому сравниваем их до блока набивки
+            verify(encrypted.size == expected.size + 16, "блок набивки ${vector[0]}")
+            verify(encrypted.copyOf(expected.size).contentEquals(expected), "режим ${vector[0]} не совпал с nist")
+            val expectedWithPadding = expected + encrypted.copyOfRange(expected.size, encrypted.size)
+            verify(context.decrypt(expectedWithPadding).join().contentEquals(data), "расшифрование ${vector[0]} не совпало с nist")
         }
         val delta = ByteArray(16)
         delta[15] = 3
@@ -52,17 +56,19 @@ object Lab3Checks {
         val randomDelta = SymmetricCipherContext(key, RijndaelCipher(), CipherMode.RANDOM_DELTA, PaddingMode.ZEROS, iv, delta)
         val direct = RijndaelCipher()
         direct.setKey(key)
-        val expected = ByteArray(data.size)
-        for (i in 0..3) {
-            val block = data.copyOfRange(16 * i, 16 * i + 16)
+        val padded = data.copyOf(data.size + 16)
+        padded[data.size] = 0x80.toByte()
+        val expected = ByteArray(padded.size)
+        for (i in 0 until padded.size / 16) {
+            val block = padded.copyOfRange(16 * i, 16 * i + 16)
             block[15] = (block[15].toInt() xor (i * 3)).toByte()
             direct.encrypt(block).copyInto(expected, i * 16)
         }
         verify(randomDelta.encrypt(data).join().contentEquals(expected), "формула random delta")
         val pcbc = SymmetricCipherContext(key, RijndaelCipher(), CipherMode.PCBC, PaddingMode.ZEROS, iv)
         var feedback = iv.copyOf()
-        for (i in 0..3) {
-            val original = data.copyOfRange(16 * i, 16 * i + 16)
+        for (i in 0 until padded.size / 16) {
+            val original = padded.copyOfRange(16 * i, 16 * i + 16)
             val input = original.copyOf()
             for (j in input.indices) input[j] = (input[j].toInt() xor feedback[j].toInt()).toByte()
             val encrypted = direct.encrypt(input)
@@ -78,7 +84,7 @@ object Lab3Checks {
             val data = byteArrayOf(1, 2, 3, 4, 5)
             val padded = padding.add(data)
             verify(padded.size == 8, "размер набивки $mode")
-            if (mode == PaddingMode.ZEROS) verify(padded.copyOfRange(5, 8).contentEquals(byteArrayOf(0, 0, 0)), "zeros")
+            if (mode == PaddingMode.ZEROS) verify(padded.copyOfRange(5, 8).contentEquals(byteArrayOf(0x80.toByte(), 0, 0)), "zeros")
             if (mode == PaddingMode.ANSI_X923) verify(padded.copyOfRange(5, 8).contentEquals(byteArrayOf(0, 0, 3)), "ansi x923")
             if (mode == PaddingMode.PKCS7) verify(padded.copyOfRange(5, 8).contentEquals(byteArrayOf(3, 3, 3)), "pkcs7")
             if (mode == PaddingMode.ISO_10126) verify(padded.last() == 3.toByte(), "iso10126")
@@ -88,7 +94,16 @@ object Lab3Checks {
         expectInvalid { BlockPadding(PaddingMode.ANSI_X923, 8).remove(byteArrayOf(1, 2, 3, 4, 5, 1, 0, 3)) }
         expectInvalid { BlockPadding(PaddingMode.PKCS7, 8).remove(ByteArray(8)) }
         val zeros = BlockPadding(PaddingMode.ZEROS, 8)
-        verify(zeros.remove(zeros.add(byteArrayOf(1, 0))).contentEquals(byteArrayOf(1)), "неоднозначность zeros должна быть явной")
+        val markerBlock = byteArrayOf(0x80.toByte(), 0, 0, 0, 0, 0, 0, 0)
+        verify(zeros.add(ByteArray(0)).contentEquals(markerBlock), "zeros для пустых данных")
+        verify(zeros.remove(markerBlock).isEmpty(), "удаление набивки для пустых данных")
+        val aligned = byteArrayOf(1, 2, 3, 4, 5, 0x80.toByte(), 0, 0)
+        verify(zeros.add(aligned).contentEquals(aligned + markerBlock), "zeros добавляет полный блок для кратной длины")
+        verify(zeros.remove(aligned + markerBlock).contentEquals(aligned), "zeros сохраняет исходный байт 0x80 и конечные нули")
+        expectInvalid { zeros.remove(ByteArray(0)) }
+        expectInvalid { zeros.remove(ByteArray(8)) }
+        expectInvalid { zeros.remove(markerBlock + ByteArray(8)) }
+        expectInvalid { zeros.remove(byteArrayOf(0x80.toByte(), 1, 0, 0, 0, 0, 0, 0)) }
     }
 
     private fun contextChecks() {
@@ -111,7 +126,7 @@ object Lab3Checks {
                     for (length in intArrayOf(0, 1, blockSize - 1, blockSize, blockSize + 1, blockSize * 3)) {
                         val data = ByteArray(length)
                         random.nextBytes(data)
-                        if (length > 0 && padding == PaddingMode.ZEROS) data[length - 1] = 1
+                        if (length > 0 && padding == PaddingMode.ZEROS) data[length - 1] = 0
                         val original = data.copyOf()
                         val result = AtomicReference<ByteArray>()
                         val future = context.encrypt(data, result)

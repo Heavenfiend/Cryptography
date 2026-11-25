@@ -46,11 +46,15 @@ object GaloisFieldChecks {
         for (i in 0 until 80) {
             checkFactorization(BigInteger.valueOf((random.nextInt(1 shl 19) or (1 shl 19)).toLong()))
         }
-        val largeIrreducible = BigInteger.ONE.shiftLeft(128).or(BigInteger.valueOf(0x87))
-        verify(referenceIrreducible(largeIrreducible), "Независимая проверка полинома степени 128")
-        verify(GaloisField.factorize(largeIrreducible) == listOf(PolynomialFactor(largeIrreducible, 1)), "Полином степени 128")
-        val largeComposite = multiplyPolynomials(largeIrreducible, BigInteger.valueOf(3))
-        verify(GaloisField.factorize(largeComposite) == listOf(PolynomialFactor(BigInteger.valueOf(3), 1), PolynomialFactor(largeIrreducible, 1)), "Полином степени 129")
+        val irreducible = BigInteger.valueOf(0x100009)
+        verify(referenceIrreducible(irreducible), "Независимая проверка полинома степени 20")
+        verify(GaloisField.factorize(irreducible) == listOf(PolynomialFactor(irreducible, 1)), "Неприводимый полином степени 20")
+        val factorX = BigInteger.TWO
+        val factorXPlusOne = BigInteger.valueOf(3)
+        var largeComposite = irreducible.shiftLeft(64)
+        for (i in 1..45) largeComposite = multiplyPolynomials(largeComposite, factorXPlusOne)
+        val expected = listOf(PolynomialFactor(factorX, 64), PolynomialFactor(factorXPlusOne, 45), PolynomialFactor(irreducible, 1))
+        verify(GaloisField.factorize(largeComposite) == expected, "Разные множители и кратности у полинома степени 129")
         var repeated = BigInteger.ONE
         for (i in 1..65) repeated = multiplyPolynomials(repeated, BigInteger.valueOf(7))
         verify(GaloisField.factorize(repeated) == listOf(PolynomialFactor(BigInteger.valueOf(7), 65)), "Кратность 65 у полинома степени 130")

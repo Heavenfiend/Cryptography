@@ -1,5 +1,4 @@
 import java.math.BigInteger
-import java.util.TreeMap
 
 data class PolynomialFactor(val polynomial: BigInteger, val exponent: Int)
 
@@ -48,10 +47,21 @@ object GaloisField {
 
     fun factorize(polynomial: BigInteger): List<PolynomialFactor> {
         require(polynomial > BigInteger.ZERO) { "Для разложения нужен ненулевой неотрицательный полином" }
-        val factors = TreeMap<BigInteger, Int>()
-        factor(polynomial, factors)
         val result = ArrayList<PolynomialFactor>()
-        for ((value, exponent) in factors) result.add(PolynomialFactor(value, exponent))
+        var remaining = polynomial
+        var divisor = BigInteger.TWO
+        // перебираем полиномы от меньших степеней к большим, пока у остатка ещё может быть делитель
+        while (divisor.bitLength() - 1 <= (remaining.bitLength() - 1) / 2) {
+            var exponent = 0
+            while (true) {
+                val quotient = divideExactly(remaining, divisor) ?: break
+                remaining = quotient
+                exponent++
+            }
+            if (exponent > 0) result.add(PolynomialFactor(divisor, exponent))
+            divisor += BigInteger.ONE
+        }
+        if (remaining != BigInteger.ONE) result.add(PolynomialFactor(remaining, 1))
         return result
     }
 
@@ -80,15 +90,8 @@ object GaloisField {
         return result
     }
 
-    private fun remainder(value: BigInteger, divisor: BigInteger): BigInteger {
-        var result = value
-        while (result != BigInteger.ZERO && result.bitLength() >= divisor.bitLength()) {
-            result = result.xor(divisor.shiftLeft(result.bitLength() - divisor.bitLength()))
-        }
-        return result
-    }
-
-    private fun divide(value: BigInteger, divisor: BigInteger): BigInteger {
+    // делим полиномы столбиком, сокращая старший член сдвигом и xor
+    private fun divideExactly(value: BigInteger, divisor: BigInteger): BigInteger? {
         var rest = value
         var quotient = BigInteger.ZERO
         while (rest != BigInteger.ZERO && rest.bitLength() >= divisor.bitLength()) {
@@ -96,113 +99,6 @@ object GaloisField {
             quotient = quotient.setBit(shift)
             rest = rest.xor(divisor.shiftLeft(shift))
         }
-        check(rest == BigInteger.ZERO) { "Полиномы должны делиться без остатка" }
-        return quotient
-    }
-
-    private fun gcd(a: BigInteger, b: BigInteger): BigInteger {
-        var left = a
-        var right = b
-        while (right != BigInteger.ZERO) {
-            val next = remainder(left, right)
-            left = right
-            right = next
-        }
-        return left
-    }
-
-    private fun derivative(polynomial: BigInteger): BigInteger {
-        var result = BigInteger.ZERO
-        for (i in 1 until polynomial.bitLength() step 2) {
-            if (polynomial.testBit(i)) result = result.setBit(i - 1)
-        }
-        return result
-    }
-
-    private fun squareRoot(polynomial: BigInteger): BigInteger {
-        var result = BigInteger.ZERO
-        for (i in 0 until polynomial.bitLength() step 2) {
-            if (polynomial.testBit(i)) result = result.setBit(i / 2)
-        }
-        return result
-    }
-
-    private fun factor(polynomial: BigInteger, factors: MutableMap<BigInteger, Int>) {
-        if (polynomial == BigInteger.ONE) return
-        if (polynomial.bitLength() == 2) {
-            factors[polynomial] = (factors[polynomial] ?: 0) + 1
-            return
-        }
-        val derivative = derivative(polynomial)
-        if (derivative == BigInteger.ZERO) {
-            // нулевая производная означает, что все степени чётные: извлекаем квадратный корень и удваиваем кратности
-            val rootFactors = TreeMap<BigInteger, Int>()
-            factor(squareRoot(polynomial), rootFactors)
-            for ((value, exponent) in rootFactors) {
-                factors[value] = (factors[value] ?: 0) + 2 * exponent
-            }
-            return
-        }
-        val repeated = gcd(polynomial, derivative)
-        if (repeated != BigInteger.ONE) {
-            factor(repeated, factors)
-            factor(divide(polynomial, repeated), factors)
-            return
-        }
-        val basis = berlekampBasis(polynomial)
-        if (basis.size == 1) {
-            factors[polynomial] = (factors[polynomial] ?: 0) + 1
-            return
-        }
-        for (value in basis) {
-            if (value == BigInteger.ONE) continue
-            val divisor = gcd(polynomial, value)
-            if (divisor != BigInteger.ONE && divisor != polynomial) {
-                factor(divisor, factors)
-                factor(divide(polynomial, divisor), factors)
-                return
-            }
-        }
-        error("Не удалось разделить полином по базису берлекэмпа")
-    }
-
-    private fun berlekampBasis(polynomial: BigInteger): List<BigInteger> {
-        // ищем полиномы h, для которых h^2 = h по модулю исходного полинома, решая двоичную систему (q - i)h = 0
-        val degree = polynomial.bitLength() - 1
-        val rows = Array(degree) { BigInteger.ZERO }
-        var column = BigInteger.ONE
-        for (j in 0 until degree) {
-            for (i in 0 until degree) {
-                if (column.testBit(i)) rows[i] = rows[i].setBit(j)
-            }
-            rows[j] = rows[j].flipBit(j)
-            column = remainder(column.shiftLeft(2), polynomial)
-        }
-        val pivotColumns = ArrayList<Int>()
-        // исключаем неизвестные методом гаусса; над gf(2) вычитание строк заменяется xor
-        var pivotRow = 0
-        for (j in 0 until degree) {
-            var found = pivotRow
-            while (found < degree && !rows[found].testBit(j)) found++
-            if (found == degree) continue
-            val temporary = rows[pivotRow]
-            rows[pivotRow] = rows[found]
-            rows[found] = temporary
-            for (i in 0 until degree) {
-                if (i != pivotRow && rows[i].testBit(j)) rows[i] = rows[i].xor(rows[pivotRow])
-            }
-            pivotColumns.add(j)
-            pivotRow++
-        }
-        val basis = ArrayList<BigInteger>()
-        for (j in 0 until degree) {
-            if (j in pivotColumns) continue
-            var vector = BigInteger.ONE.shiftLeft(j)
-            for (i in pivotColumns.indices) {
-                if (rows[i].testBit(j)) vector = vector.setBit(pivotColumns[i])
-            }
-            basis.add(vector)
-        }
-        return basis
+        return if (rest == BigInteger.ZERO) quotient else null
     }
 }

@@ -73,7 +73,7 @@ object RijndaelDemo {
                                 }
                                 val target = directory.resolve("$mode-$padding")
                                 val encryptedDirectory = Files.createDirectories(target.resolve("encrypted"))
-                                val restoredDirectory = Files.createDirectories(target.resolve("restored"))
+                                val restoredDirectory = Files.createDirectories(target.resolve("decrypted"))
                                 for (source in files) {
                                     val name = source.fileName.toString()
                                     val encrypted = encryptedDirectory.resolve("$name.enc")
